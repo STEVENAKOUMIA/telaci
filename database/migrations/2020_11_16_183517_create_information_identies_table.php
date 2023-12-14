@@ -16,6 +16,8 @@ class CreateInformationIdentiesTable extends Migration
         Schema::create('information_identies', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('nom')->nullable();
+            $table->string('prenoms')->nullable();
             $table->string('lieu_naissance')->nullable();
             $table->string('date_naissance')->nullable();
             $table->string('genre')->nullable();

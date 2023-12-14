@@ -94,6 +94,13 @@ class MaisonController extends Controller
 
     public function addPlace(Request $request)
     {
+        $photo_couverture=$request->file('photo_couverture');
+        if($photo_couverture!=null)
+        {
+            $imageName= $photo_couverture->extension();
+            $photo_couverture = $this->savePicture($imageName, ('assets/img/places/'));
+            $photo_couverture = 'assets/img/places/'.$imageName;
+        }
         //on compte le nb d'enregistrement existant
         $count = Place::count('id');
         $data = Place::create(
@@ -126,12 +133,33 @@ class MaisonController extends Controller
                 'nombre_salle_eau'=>$request->nombre_salle_eau,
                 'is_validated'=>$request->is_validated,
                 'commune_id'=>$request->commune_id,
+                'photo_couverture'=>$photo_couverture,
                 'image_id'=>$count+1,
                 'ref'=>uniqid()
 
             ]
         );
         //on enregistre dans la table image la photo
+        for($i = 1; $i < 10; $i++)
+        {
+            if($request->file('photo'.$i)!=null)
+            {
+                $photo ='photo';
+                $photo =$request->file('photo'.$i);
+                //dd($photo);
+                $photoName=uniqid().'.'. $photo->extension();
+                $photo = $this->savePicture($photoName, ('assets/img/places/'));
+                $photo = 'assets/img/places/'.$photoName;
+
+                Image::create(
+                    [
+                        'place_id'=>$data->id,
+                        'url'=>$photo,
+                        'created_at'=>now(),
+                    ]
+                );
+            }
+        }
         //traitement image
         /*$arrImg = [];
         $array_image = [];
@@ -877,8 +905,6 @@ class MaisonController extends Controller
                     ]
                 );
             }
-
-
         }
         if($data)
         {
@@ -955,4 +981,36 @@ class MaisonController extends Controller
     {
         //
     }
+
+    private function savePicture($base64_string, $output_file) {
+        $dirPlace = 'assets/img/places/';
+        $dirPhoto = 'assets/img/users/photo/';
+        $dirPieces = 'assets/img/users/pieces/';
+        if(!is_dir($dirPlace)){
+            mkdir( $dirPlace , 0755, true);
+        }
+        if(!is_dir($dirPhoto)){
+            mkdir( $dirPhoto , 0755, true);
+        }
+        if(!is_dir($dirPieces)){
+            mkdir( $dirPieces , 0755, true);
+        }
+        // chdir($old.$path_to_file);
+        // open the output file for writing
+        $ifp = fopen( $output_file, 'wb' );
+
+        // split the string on commas
+        // $data[ 0 ] == "data:image/png;base64"
+        // $data[ 1 ] == <actual base64 string>
+        // $data = explode( ',', $base64_string );
+
+        // we could add validation here with ensuring count( $data ) > 1
+        fwrite( $ifp, base64_decode( $base64_string ) );
+
+        // clean up the file resource
+        fclose( $ifp );
+
+        return $output_file;
+    }
+
 }

@@ -34,10 +34,6 @@ class InscriptionController extends Controller
         $data = User::findOrFail($id);
         $password = $request->password;
         $confirm_password = $request->password_confirmation;
-      /*  $validatorPassword = Validator::make($request->all(),
-            [
-                'password'=>'confirmed'
-            ]);*/
         if($password!=$confirm_password)
         {
             return response()->json('Les 2 mots de passe ne correspondent pas');
@@ -97,6 +93,8 @@ class InscriptionController extends Controller
             $identity = InformationIdenty::create(
                 [
                     'name'=>$data->name,
+                    'nom'=>$data->nom,
+                    'prenoms'=>$data->prenoms,
                     'photo'=>$photo,
                     'phone1'=>$data->phone,
                     'created_at'=>now(),
@@ -238,6 +236,8 @@ class InscriptionController extends Controller
         $dataInfo = InformationIdenty::where('user_id',$id)->first();
         $data = InformationIdenty::findOrFail($dataInfo->id);
         $data->name = $request->name;
+        $data->nom = $request->nom;
+        $data->prenoms = $request->prenoms;
         $data->genre = $request->genre;
         $data->phone1 = $request->phone1;
         $data->phone2 = $request->phone2;
@@ -255,6 +255,8 @@ class InscriptionController extends Controller
         //on update les datas dans la table user
         $dataUser = User::findOrFail($id);
         $dataUser->name = $request->name;
+        $dataUser->nom = $request->nom;
+        $dataUser->prenoms = $request->prenoms;
         $dataUser->phone = $request->phone1;
         $dataUser->is_completed = 1;
         $dataUser->save();
@@ -435,8 +437,10 @@ class InscriptionController extends Controller
 
     public function updateProfil(Request $request, $id)
     {
+        $nom = $request->nom;
+        $prenom = $request->prenom;
+        $name = $nom .' '.$prenom;
         $id = Auth::user()->id;
-        //dd($id);
         $cni_recto=$request->file('cni_recto');
         $cniRectoName=uniqid().'.'. $cni_recto->extension();
         $cni_recto = $cni_recto->move('assets/img/users/pieces', $cniRectoName);
@@ -447,29 +451,44 @@ class InscriptionController extends Controller
         //on update les info dans la table informationIdentity
         $dataInfo = InformationIdenty::where('user_id',$id)->first();
         $data = InformationIdenty::findOrFail($dataInfo->id);
-        //dd($data);
-        $data->name = $request->name;
-        $data->genre = $request->genre;
-        $data->phone1 = $request->phone;
-        $data->phone2 = $request->phone2;
-        $data->lieu_naissance = $request->lieu_naissance;
-        $data->date_naissance = $request->date_naissance;
-        $data->nationalite = $request->nationalite;
-        //$data->pays = $request->pays;
-        $data->domicile = $request->domicile;
-        $data->cni_recto = $cni_recto;
-        $data->cni_verso = $cni_verso;
-        $data->numero_cni = $request->numero_cni;
-        $data->updated_at = now();
-        $data->save();
-        //on update les datas dans la table user
-        $dataUser = User::findOrFail($id);
-        $dataUser->name = $request->name;
-        $dataUser->phone = $request->phone;
-        $dataUser->is_completed = 1;
-        $dataUser->save();
+        //on verifie le numero principal et secondaire
+        $checkPhoneOne = InformationIdenty::where('user_id','!=',Auth::user()->id)
+            ->where('phone1',$request->phone)->first();
+        if($checkPhoneOne!=null)
+        {
+            return back()->withInput()->with('error','Le numero principal est deja attribué à un utilisateur');
+        }
 
-        return redirect()->route('profil.index')->with('success','Profil mis à jour avec succès');
+        else
+        {
+            $data->name = $name;
+            $data->nom = $nom;
+            $data->prenoms = $prenom;
+            $data->genre = $request->genre;
+            $data->phone1 = $request->phone;
+            $data->phone2 = $request->phone2;
+            $data->lieu_naissance = $request->lieu_naissance;
+            $data->date_naissance = $request->date_naissance;
+            $data->nationalite = $request->nationalite;
+            //$data->pays = $request->pays;
+            $data->domicile = $request->domicile;
+            $data->cni_recto = $cni_recto;
+            $data->cni_verso = $cni_verso;
+            $data->numero_cni = $request->numero_cni;
+            $data->updated_at = now();
+            $data->save();
+            //on update les datas dans la table user
+            $dataUser = User::findOrFail($id);
+            $dataUser->name = $name;
+            $dataUser->nom = $nom;
+            $dataUser->prenoms = $prenom;
+            $dataUser->phone = $request->phone;
+            $dataUser->is_completed = 1;
+            $dataUser->save();
+
+            return redirect()->route('profil.index')->with('success','Profil mis à jour avec succès');
+
+        }
     }
 
     /**
@@ -505,12 +524,17 @@ class InscriptionController extends Controller
         }
         else
         {
+            $nom = $request->nom;
+            $prenom = $request->prenom;
+            $name = $nom. ' '. $prenom;
             $photo=$request->photo;
             $photoName=time().'.'. $photo->extension();
             $photo = $photo->move('assets/img/users/photo', $photoName);
             $data = User::create(
                 [
-                    'name'=>$request->name,
+                    'nom'=>$nom,
+                    'prenoms'=>$prenom,
+                    'name'=>$name,
                     'photo_profil'=>$photo,
                     'phone'=>$request->phone,
                     'created_at'=>now(),
@@ -525,6 +549,8 @@ class InscriptionController extends Controller
             //on cree son profil
             $identity = InformationIdenty::create(
                 [
+                    'nom'=>$data->nom,
+                    'prenoms'=>$data->prenoms,
                     'name'=>$data->name,
                     'photo'=>$photo,
                     'phone1'=>$data->phone,
